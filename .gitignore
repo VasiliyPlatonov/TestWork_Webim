@@ -25,6 +25,8 @@
 /.nb-gradle/
 
 
+dist/
+npm-debug.log
 node_modules
 yarn.lock
 yarn-error.log
