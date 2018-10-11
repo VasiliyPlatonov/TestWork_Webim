@@ -84,6 +84,10 @@ public class MainController {
                         .execute();
             } catch (ApiException | ClientException e) {
                 e.printStackTrace();
+            } catch (NullPointerException e) {
+                e.printStackTrace();
+                model.addAttribute("error", "An error occurred while trying to log in. Try to remove cookies. Or just try to authorize again");
+                return "index";
             }
 
             model.addAttribute("friends", friends.getItems());
