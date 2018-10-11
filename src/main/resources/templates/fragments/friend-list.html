@@ -1,0 +1,8 @@
+<div th:fragment="friendList" class="person-list">
+    <h2>Your 5 friends from VK: </h2>
+    <div th:each="friend : ${friends}">
+        <div class="person-list__item-wrap">
+            <span th:text="|${friend.firstName} ${friend.LastName}"></span>
+        </div>
+    </div>
+</div>
