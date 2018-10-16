@@ -4,14 +4,9 @@ import com.vk.api.sdk.client.VkApiClient;
 import com.vk.api.sdk.client.actors.UserActor;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
-import com.vk.api.sdk.exceptions.OAuthException;
 import com.vk.api.sdk.httpclient.HttpTransportClient;
 import com.vk.api.sdk.objects.UserAuthResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -27,9 +22,6 @@ public class VKOAuthService {
     private String port;
     private String scope;
     private String version;
-    private UserActor actor;
-    private UserAuthResponse userAuthResponse;
-
 
     public String getOAuthUrl() {
         return "https://oauth.vk.com/authorize?client_id=" + clientId + "&display=page&redirect_uri=" + redirectUri + "&scope=" + scope + "&response_type=code&v=" + version;
@@ -48,16 +40,14 @@ public class VKOAuthService {
         return vkApiClient;
     }
 
-    public void setActor() {
-        actor = new UserActor(userAuthResponse.getUserId(), userAuthResponse.getAccessToken());
-    }
 
-    public UserActor getActor() {
-        if (actor == null) {
-            setActor();
-            return actor;
-        } else
-            return actor;
+    public UserActor getActor(String code) throws ClientException, ApiException {
+
+        UserAuthResponse authResponse = vkApiClient.oauth()
+                .userAuthorizationCodeFlow(clientId, clientSecret, redirectUri, code)
+                .execute();
+
+        return new UserActor(authResponse.getUserId(), authResponse.getAccessToken());
     }
 
 
@@ -107,20 +97,6 @@ public class VKOAuthService {
 
     public void setVersion(String version) {
         this.version = version;
-    }
-
-    public UserAuthResponse getUserAuthResponse() {
-        return userAuthResponse;
-    }
-
-    public void setUserAuthResponse(String code) {
-        try {
-            userAuthResponse = this.vkApiClient.oauth()
-                    .userAuthorizationCodeFlow(clientId, clientSecret, redirectUri, code)
-                    .execute();
-        } catch (ApiException | ClientException e) {
-            e.printStackTrace();
-        }
     }
 
 }

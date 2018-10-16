@@ -1,7 +1,10 @@
 package webim.vasiliyplatonov.test_work.controller;
 
+import com.vk.api.sdk.client.VkApiClient;
+import com.vk.api.sdk.client.actors.UserActor;
 import com.vk.api.sdk.exceptions.ApiException;
 import com.vk.api.sdk.exceptions.ClientException;
+import com.vk.api.sdk.objects.UserAuthResponse;
 import com.vk.api.sdk.objects.friends.responses.GetFieldsResponse;
 import com.vk.api.sdk.queries.users.UserField;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +20,7 @@ import webim.vasiliyplatonov.test_work.service.VKOAuthService;
 import javax.servlet.http.Cookie;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.http.HttpSession;
 
 @Controller
 public class MainController {
@@ -55,45 +59,56 @@ public class MainController {
     }
 
     @GetMapping("/verify")
-    public String verify(HttpServletRequest request, HttpServletResponse response) {
+    public String verify(HttpServletRequest request, HttpServletResponse response, Model model) {
+
         String code = request.getParameter("code");
 
         if (code != null) {
-            vkOAuth.setUserAuthResponse(code);
+            try {
+                UserActor actor = vkOAuth.getActor(code);
+                request.getSession().setAttribute("actor", actor);
+
+            } catch (ApiException | ClientException | NullPointerException e) {
+                e.printStackTrace();
+                model.addAttribute("error",
+                        "An error occurred while trying to log in. Try to remove cookies. Or just try to authorize again");
+                return "index";
+            }
+
             Cookie authorized = new Cookie("authorized", "true");
             authorized.setMaxAge(60 * 60 * 4); // four hours
             response.addCookie(authorized);
+
             return "redirect:main";
         }
-
-        return "index";
+        return "redirect:index";
     }
 
     @GetMapping("/main")
     public String main(Model model,
+                       HttpSession session,
                        @CookieValue(value = "authorized", required = false) Cookie authorized) {
 
-        if (authorized != null && authorized.getValue().equals("true")) {
+        UserActor actor = (UserActor) session.getAttribute("actor");
 
-            GetFieldsResponse friends = null;
+        if (authorized != null && authorized.getValue().equals("true")) {
             try {
-                friends = vkOAuth.getVkApiClient()
+                GetFieldsResponse friends = vkOAuth.getVkApiClient()
                         .friends()
-                        .get(vkOAuth.getActor(), UserField.COUNTRY)
+                        .get(actor, UserField.COUNTRY)
                         .count(countOfFriends)
                         .execute();
-            } catch (ApiException | ClientException e) {
-                e.printStackTrace();
-            } catch (NullPointerException e) {
+
+                model.addAttribute("friends", friends.getItems());
+                return "main";
+
+            } catch (ApiException | ClientException | NullPointerException e) {
                 e.printStackTrace();
                 model.addAttribute("error", "An error occurred while trying to log in. Try to remove cookies. Or just try to authorize again");
                 return "index";
             }
-
-            model.addAttribute("friends", friends.getItems());
-            return "main";
-        } else
-            return "index";
+        }
+        return "redirect:index";
     }
 }
 
